@@ -1,0 +1,45 @@
+version: "3"
+services:
+  postgres:
+    image: postgres:12
+    environment:
+      POSTGRES_USER: puser
+      POSTGRES_PASSWORD: ppsw
+      POSTGRES_DB: lportal
+    ports:
+      - "20000:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - liferay-network
+  liferay:
+    image: liferay/portal:7.3.5-ga6
+    # entrypoint: 
+    #   - /bin/sh
+    #   - -c
+    #   - '/mnt/liferay/files/wait-for postgres:5432 -- /usr/local/bin/liferay_entrypoint.sh'
+    depends_on:
+      - postgres
+    environment:
+      - JPDA_ADDRESS=0.0.0.0:8000
+      - LIFERAY_JPDA_ENABLED=true
+    ports:
+      - "20001:8080"
+      - "20002:8000"
+      - "20003:11311"
+    volumes:
+      - ./mount:/mnt/liferay
+      - liferay-document-library:/opt/liferay/data/document_library
+      - liferay-configs:/opt/liferay/osgi/configs
+      - liferay-modules:/opt/liferay/osgi/modules
+      - liferay-war:/opt/liferay/osgi/war
+    networks:
+      - liferay-network
+volumes:
+  postgres-data:
+  liferay-document-library:
+  liferay-configs:
+  liferay-modules:
+  liferay-war:
+networks:
+  liferay-network:
