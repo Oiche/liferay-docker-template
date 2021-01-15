@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ppsw
       POSTGRES_DB: lportal
     ports:
-      - "20000:5432"
+      - "20001:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -24,9 +24,9 @@ services:
       - JPDA_ADDRESS=0.0.0.0:8000
       - LIFERAY_JPDA_ENABLED=true
     ports:
-      - "20001:8080"
-      - "20002:8000"
-      - "20003:11311"
+      - "20002:8080"
+      - "20003:8000"
+      - "20004:11311"
     volumes:
       - ./mount:/mnt/liferay
       - liferay-document-library:/opt/liferay/data/document_library

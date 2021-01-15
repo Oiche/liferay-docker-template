@@ -1,119 +1,81 @@
-# Docker
+# Liferay Docker Template
 
+- [Liferay Docker Template](#liferay-docker-template)
+  - [Versioni](#versioni)
+  - [Struttura Cartelle](#struttura-cartelle)
+  - [Comandi Principali](#comandi-principali)
+    - [CLI](#cli)
+    - [Docker Compose](#docker-compose)
+  - [FAQ](#faq)
+  - [Link Utili](#link-utili)
 
+## Versioni
+
+Versioni immagini utilizzate nel `docker-compose.yml`:
+
+- Liferay: 7.3.5-ga6
+- Postgres: 12
+
+> Prese dalla [Tabella Compatibilità](https://www.liferay.com/it/compatibility-matrix)
 
 ## Struttura Cartelle
 
-- project-name
-  - mount
-    - deploy
-    - files
-      - [portal-developer.properties](project-name/mount/files/portal-developer.properties)
-      - [portal-ext.properties](project-name/mount/files/portal-ext.properties)
-      - [portal-runtime.properties](project-name/mount/files/portal-runtime.properties)
-      - [portal-setup-wizard.properties](project-name/mount/files/portal-setup-wizard.properties)
-    - scripts
-  - [docker-compose.yml](project-name/docker-compose.yml)
+- mount
+  - deploy
+  - files
+    - [portal-developer.properties](mount/files/portal-developer.properties)
+    - [portal-ext.properties](mount/files/portal-ext.properties)
+    - [portal-runtime.properties](mount/files/portal-runtime.properties)
+    - [portal-setup-wizard.properties](mount/files/portal-setup-wizard.properties)
+  - scripts
+- [docker-compose.yml](docker-compose.yml)
+- [patch.sh](patch.sh)
 
-```deploy```: Cartella per il rilascio di pacchetti, licenze, etc.
+`deploy`: Cartella per il rilascio di pacchetti, licenze, etc.
 
-```files```: Cartella per sovrascrivere i files di configurazione o dati come file properties, configurazione.
+`files`: Cartella per sovrascrivere i files di configurazione o dati come file properties, configurazione, etc.
 
-```scripts```: Contiene script da lanciare prima dell'avvio di liferay.
-
----
-
-## CLI
-
-> Per utilizzare gli stessi comandi su Windows bisogna o rimuovere i ritorni a capo (i backslash) o sostiturli con gli relativi caratteri senza lo spazio finale:
->
-> Powershell: ` backtick o accento grave
-> 
-> Batch: ^ circumflex o accento circonflesso
->
-> Inoltre per batch è necessario sostituire ```$(pwd)``` con ```%cd%```
-
-### Crea ed avvia un container
-
-```shell
-docker run \ 
-    --detach \ 
-    --name liferay-nome-container \ 
-    --publish 20001:8080 \ 
-    --publish 20002:8000 \ 
-    --publish 20003:11311 \ 
-    --volume $(pwd)/mount:/mnt/liferay \ 
-    nome-immagine
-```
-
-```--detach```  viene utilizzato per evitare di visualizzare direttamente l'output relativo al container e permettendo così di continuare ad utilizzare il terminale.
-
-```--name nome-container``` viene utilizzato per dare un nome semplice da ricordare.
-
-```--publish LOCALE:CONTAINER``` permette di legare una porta locale scelta con una delle porte esposte dal container.
-
-```--volume LOCALE:CONTAINER``` permette la creazione di un volume per la copia dei file locali nel container. (LOCALE e CONTAINER sono dei percorsi assoluti)
-
-```nome-immagine``` è composto da ```nome-repository``` e ```tag``` uniti dai due punti. Esempio: ```liferay/portal:7.3.5-ga6```
-
-> È possibile aggiungere anche i seguenti parametri:
-> 
-> ```--rm``` per dire a docker di cancellare il container non appena viene fermato.
-> 
-> ```--env``` per impostare delle variabili d'ambiente.
-> 
-> Esempio:
-> ```
->  --env JPDA_ADDRESS=0.0.0.0:8000 
->  --env LIFERAY_JPDA_ENABLED=true
-> ```
-> 
-> Per impostare le variabili d'ambiente che attivano l'interfaccia di debug.
-
-### Avvia il container
-
-```shell
-docker start \ 
-  liferay-nome-container
-```
-
-### Ferma il container
-
-```shell
-docker stop \ 
-  liferay-nome-container
-```
-
-### Mostra i log
-
-```shell
-docker logs \ 
-    --follow \ 
-    --since 1m \ 
-    liferay-nome-container
-```
-
-```--follow``` viene utilizzato per continuare a leggere l'output del container.
-
-```--since TEMPO``` viene utilizzato per leggere solo l'output vecchio di un certo tempo (1 minuto in questo caso). Permette di non dover visualizzare tutto l'output precedente prima di arrivare alla fine.
-
-### Entra in SHELL
-
-```shell
-docker exec \ 
-    --interactive \ 
-    --tty \ 
-    liferay-nome-container \ 
-    /bin/bash
-```
-
-```--interactive``` e ```--tty``` permettono di mantere attivo l'input dell'utente dopo l'esecuzione del comando, che in questo caso è la shell.
+`scripts`: Contiene script da lanciare prima dell'avvio di liferay.
 
 ---
 
-## Compose
+## Comandi Principali
 
+### [CLI](doc/CLI.md)
 
+### [Docker Compose](doc/Compose.md)
+
+---
+
+## FAQ
+
+<details>
+  <summary>Come posso gestire far aspettare a Liferay l'avvio del Database?</summary>
+
+  In generale non è necessario regolare l'ordine d'avvio dei container.
+  Tuttavia alcune versioni vecchie di Liferay vanno in crash se non riescono a connettersi al database nell'immediato.
+
+  Per risolvere questo problema si possono utilizzare degli script appositi come [wait-for](https://github.com/eficode/wait-for) e [wait-for-it](https://github.com/vishnubob/wait-for-it).
+
+  Per fare un esempio utilizzerò `wait-for` scaricando il file dalla repository ed inserendolo nella cartella `mount/files` e modificando il file `docker-compose.yml` aggiungendo la proprietà sottostante al servizio `liferay`.
+
+  ```yaml
+  entrypoint: 
+    - /bin/sh
+    - -c
+    - '/mnt/liferay/files/wait-for postgres:5432 -- /usr/local/bin/liferay_entrypoint.sh'
+  ```
+
+  In questo modo viene eseguito l'entrypoint originale di Liferay solo una volta diventato disponibile il database.
+</details>
+
+<details>
+  <summary>DXP: Come installo i fixpack?</summary>
+
+  Per installare i fixpack è bisogna inserirli nella cartella `mount/files/patching-tool/patches` ed incollare il file `patch.sh` nella cartella `mount/files/scripts`.
+
+  È possibile far eseguire qualsiasi comando al patching-tool e sovrascriverne direttamente i files inserendoli in `mount/files/patching-tool`.
+</details>
 
 ---
 
@@ -125,3 +87,4 @@ docker exec \
 - Liferay CE Docker: https://hub.docker.com/r/liferay/portal
 - Liferay DXP Docker: https://hub.docker.com/r/liferay/dxp
 - Liferay Portal Properties: https://docs.liferay.com/portal/
+- Lista Porte TCP/UDP conosciute: https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers
